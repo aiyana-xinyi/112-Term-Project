@@ -1,6 +1,4 @@
 import pygame
-import MovingNotes 
-
 
 #frame work from Luke Peraza
 class PygameGame(object):
@@ -10,7 +8,7 @@ class PygameGame(object):
         self.background = pygame.image.load("cover(1).png")
 
         self.screen = pygame.display.set_mode((700, 700))
-        self.screen.blit(self.background,[0,0]) 
+
         pygame.mixer.music.load("River Flows in You.wav")
         pygame.mixer.music.play(-1)
         self.myFont = pygame.font.Font("freesansbold.ttf",20)
@@ -47,14 +45,16 @@ class PygameGame(object):
         if 540 > self.mouse[0] > 390 and 640 > self.mouse[1] > 580:
             pygame.draw.rect(self.screen,(153,153,255),(390,580,150,60))
             if self.click[0] == 1:
-                print("i clicked")
-                MovingNotes.MovingNotes().redrawAll(self.screen)
+                pass#Level().run()
+
         else:
             pygame.draw.rect(self.screen,(0,102,204),(390,580,150,60))
 
         #hover over instruction
         if 320>self.mouse[0]>190 and 640>self.mouse[1]>580:
             pygame.draw.rect(self.screen,(153,153,255),(190,580,130,60))
+            if self.click[0] == 1:
+                pass#Instructions().run()
         else:
             pygame.draw.rect(self.screen,(0,102,204),(190,580,130,60))
 
@@ -76,27 +76,33 @@ class PygameGame(object):
 #DO NOT TOUCH
 ########################################
 
-    def __init__(self, width=700, height=700, fps=50, title="112 Pygame Game"):
+    def __init__(self, width=700, height=700, fps=50, title="Falling Piano Tiles"):
        #pygame.mixer.music.load("River Flows in You.wav")
-        self.width = width
-        self.height = height
+        self.width = 700
+        self.height = 700
         self.fps = fps
         self.title = title
-        self.background = pygame.image.load("introBackground.png")
         self.bgColor = (0,0,0)
+        self.score = 0
+        self.song = "111"
+        print("im __init__",self.song)
+        self.life = 0
         pygame.init()
 
     def run(self):
         clock = pygame.time.Clock()
-        screen = pygame.display.set_mode((self.width, self.height))
+        screen = pygame.display.set_mode((700, 700))
         # set the title of the window
-        pygame.display.set_caption(self.title)
+        pygame.display.set_caption("Falling Piano Tiles")
 
         # stores all the keys currently being held down
         self._keys = dict()
 
         # call game-specific initialization
-        self.init()
+
+        print("2")
+        self.init() 
+
         playing = True
         while playing:
             time = clock.tick(self.fps)
