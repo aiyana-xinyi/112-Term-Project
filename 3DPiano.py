@@ -2,6 +2,10 @@ import pygame
 from pyGameTechDemo import PygameGame
 from Struct import Struct
 import random
+from Lost import Lost
+from Struct import Struct
+from win import Win
+import pyaudio
 
 class ThreeDPiano(PygameGame):
 	def gameDimensions(self):
@@ -34,8 +38,8 @@ class ThreeDPiano(PygameGame):
 		self.life = life
 		self.song = song+".wav"
 		self.win = False
-		pygame.mixer.music.load(self.song)
-		pygame.mixer.music.play(0)
+		# pygame.mixer.music.load(self.song)
+		# pygame.mixer.music.play(0)
 
 		self.mixer = pygame.mixer
 		self.mixer.init()
@@ -73,14 +77,24 @@ class ThreeDPiano(PygameGame):
 	    return (x0, y0, x1, y1)
 
 	def timerFired(self,dt):
-	    self.timerCalls += 1
-	    if self.timerCalls % 9 == 0:
-	    	self.getRandomCell()
-
-	    if self.timerCalls % 5 == 0:
-	    	for i in range (len(self.selected)):
-		        [row,col] = self.selected[i]
-		        self.selected[i] = [row+1,col]
+		if self.life != 0 and self.channel.get_busy() == 1:
+			self.timerCalls += 1
+			if self.timerCalls % 9 == 0:
+				self.getRandomCell()
+			if self.timerCalls % 5 == 0:
+				for i in range (len(self.selected)):
+					[row,col] = self.selected[i]
+					self.selected[i] = [row+1,col]
+					if self.selected[i][0]>self.rows:
+						self.life -= 1
+		#won
+		elif self.channel.get_busy() == 0 and self.life != 0:
+			pygame.mixer.music.stop()
+			Win().run()
+		#lost
+		elif self.life == 0:
+			pygame.mixer.music.stop()
+			Lost().run()
 
 	def keyPressed(self,keycode,mod):
 		#if it's still in game
@@ -93,43 +107,39 @@ class ThreeDPiano(PygameGame):
 			# 	threading.Thread(target = self.playMusic,args = ("River Flows in You.wav",30000)).start()
 			try:
 				if keycode == pygame.K_a:
-					print("ha")
 					self.curTime = self.timerCalls
 					self.endTime = self.curTime + 5
-					Struct.score += 1
-					print("la")
 					for i in range (len(self.selected)):
-						print(self.selected[i])
 						if self.selected[i][1] == 0:
-							print("im here")
 							self.selected.pop(i)
+							Struct.score += 1
 							break
 			
 				if keycode == pygame.K_s:
 					self.curTime = self.timerCalls
 					self.endTime = self.curTime + 5
-					Struct.score += 1
 					for i in range (len(self.selected)):
 						if self.selected[i][1] == 1:
 							self.selected.pop(i)
+							Struct.score += 1
 							break
 					
 				if keycode == pygame.K_d:
 					self.curTime = self.timerCalls
 					self.endTime = self.curTime + 5
-					Struct.score += 1
 					for i in range (len(self.selected)):
 						if self.selected[i][1] == 2:
 							self.selected.pop(i)
+							Struct.score += 1
 							break
 					
 				if keycode == pygame.K_f:
 					self.curTime = self.timerCalls
 					self.endTime = self.curTime + 5
-					Struct.score += 1
 					for i in range (len(self.selected)):
 						if self.selected[i][1] == 3:
 							self.selected.pop(i)
+							Struct.score += 1
 							break
 
 			except:
@@ -140,8 +150,11 @@ class ThreeDPiano(PygameGame):
 		   
 
 	def redrawAll(self,screen):
+		count = 0
+		constant = 5
 		for row in range(self.rows):
 			for col in range(self.cols):
+				count += 1
 				(x0, y0, x1, y1) = self.getCellBounds(row,col)
 				pygame.draw.rect(self.screen,(255,255,255),(x0, y0,x1-x0,y1-y0))
 				pygame.draw.rect(self.screen,(0,0,0),(x0, y0,x1-x0,y1-y0),1)
@@ -174,7 +187,7 @@ class ThreeDPiano(PygameGame):
 			# call game-specific initialization
 			# print("3")
 			#self.init(Struct.song,Struct.life)
-			self.init("Nocturne",3)
+			self.init("test",3)
 
 			playing = True
 			while playing:
