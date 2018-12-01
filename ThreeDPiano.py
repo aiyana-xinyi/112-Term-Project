@@ -2,11 +2,14 @@ import pygame
 from pyGameTechDemo import PygameGame
 from Struct import Struct
 import random
-from Lost import Lost
+#from Lost import Lost
 from Struct import Struct
-from win import Win
+#from win import Win
 import pyaudio
 import threading
+import sys
+from aubio import onset, source
+from numpy import hstack, zeros
 
 class ThreeDPiano(PygameGame):
 	#CITATION: following code from 112 website
@@ -19,12 +22,13 @@ class ThreeDPiano(PygameGame):
 	#set values to variables
 	def init(self,song,life):
 		pygame.mixer.music.stop()
+		pygame.time.delay(1)
 		#CITATION: the next line of code is from 112 website
 		(self.rows,self.cols,self.margin) = self.gameDimensions()
 
 		self.selected = [[0,0]]
 		self.timerCalls = 0
-		self.timerDelay = 100
+		self.timerDelay = 1000
 
 		self.buttonFont = pygame.font.Font("freesansbold.ttf",20)
 		self.life = life
@@ -43,11 +47,36 @@ class ThreeDPiano(PygameGame):
 		self.twoDPoints = []
 		self.getAdjacentPoints()
 		self.allSelectBlock = []
+		self.setBlocks = set()
 
+		self.initialTime = pygame.time.get_ticks()
+		self.allOnsets = []
+		self.onSet()
+
+		self.nerfLevel = 0
+		self.allNerfs = []
 
 	def getRandomCell(self):
+		if self.nerfLevel == 0:
+			randCol = random.randint(0,3)
+			self.allSelectBlock.append(randCol)
+			self.setBlocks.add(randCol)
+		elif self.nerfLevel == 1:
+			randCol = random.randint(4,7)
+			self.allSelectBlock.append(randCol)
+			self.setBlocks.add(randCol)
+		elif self.nerfLevel == 2:
+			randCol = random.randint(8,11)
+			self.allSelectBlock.append(randCol)
+			self.setBlocks.add(randCol)
+		else:
+			randCol = random.randint(12,15)
+			self.allSelectBlock.append(randCol)
+			self.setBlocks.add(randCol)
+
+	def getRandomNerf(self):
 		randCol = random.randint(0,3)
-		self.allSelectBlock.append(randCol)
+		self.allNerfs.append(randCol)
 
 	def getCoordinates(self):
 		for row in range(self.rows+1):
@@ -93,27 +122,87 @@ class ThreeDPiano(PygameGame):
 		
 		self.twoDPoints = [x for x in self.twoDPoints if x != []]
 
+	#CITATION: majority of this method gotten from Github Aubio, but I made some alterations
+	def onSet(self):
+		win_s = 512                 # fft size
+		hop_s = win_s // 2          # hop size
+
+		if len(self.song) < 2:
+			print("Usage: %s <filename> [samplerate]" % sys.argv[0])
+			sys.exit(1)
+
+		filename = self.song
+
+		samplerate = 0
+		if len( sys.argv ) > 2: samplerate = int(sys.argv[2])
+
+		s = source(filename, samplerate, hop_s)
+		samplerate = s.samplerate
+		o = onset("default", win_s, hop_s, samplerate)
+
+		# list of onsets, in samples
+		onsets = []
+
+		# storage for plotted data
+		desc = []
+		tdesc = []
+		allsamples_max = zeros(0,)
+		downsample = 2  # to plot n samples / hop_s
+
+			# total number of frames read
+		total_frames = 0
+		while True:
+			samples, read = s()
+			if o(samples):
+				#print("%f" % (o.get_last_s()))
+				self.allOnsets.append(o.get_last_s())
+				onsets.append(o.get_last())
+			if read < hop_s: break
+		#self.allOnsets = list(set(self.allOnsets))
+		for i in range (len(self.allOnsets)):
+			self.allOnsets[i] = int(self.allOnsets[i]*1000)
+
+
 	def timerFired(self,dt):
 		self.fallingTime = 1
 		if self.originalLife == 3:
-			self.fallingTime = 8
+			self.fallingTime = 20
 		elif self.originalLife == 2:
 			self.fallingTime = 4
 		elif self.originalLife == 1:
 			self.fallingTime == 2
 
+		self.randomNerfTime = random.randint(10,60)
+
 		self.timerCalls += 1
 		if self.life != 0 and self.channel.get_busy() == 1:
+			#loses a life when block is lower than end of screen
 			for item in (self.allSelectBlock):
 				if item > 39:
 					self.life -= 1
 					self.allSelectBlock.remove(item)
-			if self.timerCalls % 9 == 0:
-				self.getRandomCell()
+
+			#generate a new block when an onset is detected
+			self.endTime =  pygame.time.get_ticks()
+			self.timeDiff = self.endTime-self.initialTime
+			for n in self.allOnsets:
+				if -50 <= self.timeDiff - n <= 50:
+					self.getRandomCell()
+
+			#generate random nerfs
+			if self.timerCalls % self.randomNerfTime ==0:
+				self.getRandomNerf()
+
+			#move the blocks down
 			if self.timerCalls % self.fallingTime == 0:
 				for i in range(len(self.allSelectBlock)):
 					block = self.allSelectBlock[i]
 					self.allSelectBlock[i] = block+4
+				#move nerf dowm
+				for i in range (len(self.allNerfs)):
+					block = self.allNerfs[i]
+					self.allNerfs[i] = block+4
+
 		#win
 		elif self.channel.get_busy() == 0 and self.life != 0:
 			pygame.mixer.music.stop()
@@ -144,6 +233,7 @@ class ThreeDPiano(PygameGame):
 			# if keycode == pygame.K_LEFT:
 			# 	threading.Thread(target = self.playMusic,args = ("River Flows in You.wav",30000)).start()
 			if keycode == pygame.K_a:
+				blockSubLst = []
 				contain = False
 				for block in self.allSelectBlock:
 					if block % 4 ==  0:
@@ -158,8 +248,23 @@ class ThreeDPiano(PygameGame):
 						self.allSelectBlock.pop(i)
 						Struct.score += 1
 						break
-		
+				for i in range (len(self.allSelectBlock)):
+					if self.allSelectBlock[i] % 4 == 0:
+						blockSubLst.append(self.allSelectBlock[i])
+				for i in range (len(self.allNerfs)):
+					if len(blockSubLst) == 0:
+						if len(self.allNerfs)>0:
+							self.allNerfs.pop(i)
+							threading.Thread(target = self.playWrong,args=()).start()
+							self.nerfLevel += 1
+					elif self.allNerfs[i] % 4 == 0 and blockSubLst[0]<self.allNerfs[i]:
+						self.allNerfs.pop(i)
+						threading.Thread(target = self.playWrong,args=()).start()
+						self.nerfLevel += 1
+
+
 			if keycode == pygame.K_s:
+				blockSubLst = []
 				contain = False
 				for block in self.allSelectBlock:
 					if (block-1) % 4 ==  0:
@@ -174,8 +279,22 @@ class ThreeDPiano(PygameGame):
 						self.allSelectBlock.pop(i)
 						Struct.score += 1
 						break
+				for i in range (len(self.allSelectBlock)):
+					if (self.allSelectBlock[i]-1) % 4 == 0:
+						blockSubLst.append(self.allSelectBlock[i])
+				for i in range (len(self.allNerfs)):
+					if len(blockSubLst) == 0:
+						if len(self.allNerfs)>0:
+							self.allNerfs.pop(i)
+							threading.Thread(target = self.playWrong,args=()).start()
+							self.nerfLevel += 1
+					elif (self.allNerfs[i]-1) % 4 == 0 and blockSubLst[0]<self.allNerfs[i]:
+						self.allNerfs.pop(i)
+						threading.Thread(target = self.playWrong,args=()).start()
+						self.nerfLevel += 1
 				
 			if keycode == pygame.K_d:
+				blockSubLst = []
 				contain = False
 				for block in self.allSelectBlock:
 					if (block-2) % 4 ==  0:
@@ -190,8 +309,22 @@ class ThreeDPiano(PygameGame):
 						self.allSelectBlock.pop(i)
 						Struct.score += 1
 						break
+				for i in range (len(self.allSelectBlock)):
+					if (self.allSelectBlock[i]-2) % 4 == 0:
+						blockSubLst.append(self.allSelectBlock[i])
+				for i in range (len(self.allNerfs)):
+					if len(blockSubLst) == 0:
+						if len(self.allNerfs)>0:
+							self.allNerfs.pop(i)
+							threading.Thread(target = self.playWrong,args=()).start()
+							self.nerfLevel += 1
+					elif (self.allNerfs[i]-2) % 4 == 0 and blockSubLst[0]<self.allNerfs[i]:
+						self.allNerfs.pop(i)
+						threading.Thread(target = self.playWrong,args=()).start()
+						self.nerfLevel += 1
 
 			if keycode == pygame.K_f:
+				blockSubLst = []
 				contain = False
 				for block in self.allSelectBlock:
 					if (block-3) % 4 ==  0:
@@ -206,7 +339,19 @@ class ThreeDPiano(PygameGame):
 						self.allSelectBlock.pop(i)
 						Struct.score += 1
 						break
-
+				for i in range (len(self.allSelectBlock)):
+					if (self.allSelectBlock[i]-3) % 4 == 0:
+						blockSubLst.append(self.allSelectBlock[i])
+				for i in range (len(self.allNerfs)):
+					if len(blockSubLst) == 0:
+						if len(self.allNerfs)>0:
+							self.allNerfs.pop(i)
+							threading.Thread(target = self.playWrong,args=()).start()
+							self.nerfLevel += 1
+					elif (self.allNerfs[i]-3) % 4 == 0 and blockSubLst[0]<self.allNerfs[i]:
+						self.allNerfs.pop(i)
+						threading.Thread(target = self.playWrong,args=()).start()
+						self.nerfLevel += 1
 
 		elif self.life <= 0 or self.channel.get_busy() == 0:
 			Lost().run()
@@ -250,6 +395,13 @@ class ThreeDPiano(PygameGame):
 					(c2,c1,c3,c4) = (pt2,pt1,pt3,pt4)
 					upperShape = [(c2[0]+15,c2[1]),c1,c3,c4]
 					pygame.draw.polygon(self.screen,(87,85,85),upperShape)
+			for nerf in self.allNerfs:
+				if nerf == i:
+					[pt2,pt1,pt3,pt4] = self.twoDPoints[i]
+					pygame.draw.polygon(self.screen,(232,229,229),[pt1,pt2,pt3,pt4])
+					(c2,c1,c3,c4) = (pt2,pt1,pt3,pt4)
+					upperShape = [(c2[0]+15,c2[1]),c1,c3,c4]
+					pygame.draw.polygon(self.screen,(255,0,0),upperShape)
 
 
 		self.scoreText = self.buttonFont.render("Score:",True,(255,255,255))
@@ -260,6 +412,17 @@ class ThreeDPiano(PygameGame):
 		self.lifeNum = self.buttonFont.render(str(self.life),True,(255,255,255))
 		screen.blit(self.lifeText,(20,30))
 		screen.blit(self.lifeNum,(90,30))
+
+	def __init__(self, width=700, height=700, fps=50, title="Falling Piano Tiles"):
+		#pygame.mixer.music.load("River Flows in You.wav")
+		self.width = 700
+		self.height = 700
+		self.fps = 10
+		self.title = title
+		self.bgColor = (0,0,0)
+		self.song = "111"
+		self.life = 0
+		pygame.init()
 
 
 	def run(self):
@@ -273,12 +436,12 @@ class ThreeDPiano(PygameGame):
 
 			# call game-specific initialization
 			
-			self.init(Struct.song,Struct.life)
-			#self.init("Nocturne",3)
+			#self.init(Struct.song,Struct.life)
+			self.init("Minuet 1",3)
 
 			playing = True
 			while playing:
-				time = clock.tick(self.fps)
+				time = clock.tick(10)
 				self.timerFired(time)
 				for event in pygame.event.get():
 					if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -306,4 +469,4 @@ class ThreeDPiano(PygameGame):
 
 			pygame.display.quit()
 
-#ThreeDPiano().run()
+ThreeDPiano().run()
