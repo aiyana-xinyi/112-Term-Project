@@ -1,5 +1,6 @@
 import pygame
 from pyGameTechDemo import PygameGame
+import Level 
 
 class Instructions(PygameGame):
 	def init(self):
@@ -13,6 +14,8 @@ class Instructions(PygameGame):
 
 
 	def redrawAll(self,screen):
+		self.mouse = pygame.mouse.get_pos()
+		self.click = pygame.mouse.get_pressed()
 		screen.blit(self.background,[-150,0])
 
 		pygame.draw.rect(self.screen,(204,229,255),(self.width/2-250,self.height/2-20,500,200))
@@ -27,5 +30,36 @@ class Instructions(PygameGame):
 		self.screen.blit(self.secondLine,(self.width/2-200,self.height/2+50))
 		self.screen.blit(self.thirdLine,(self.width/2-200,self.height/2+100))
 		self.screen.blit(self.fourthLine,(self.width/2-100,self.height/2+150))
+
+		#CITATION: the following if-statement code from Youtube Channel sentdex
+		if 210>self.mouse[0]>140 and 600>self.mouse[1]>560:
+			#pygame.draw.rect(self.screen,(153,153,255),(90,580,190,60))
+			self.big = pygame.font.Font("PG_Roof Runners_active_bold-it.ttf",40)
+			self.quit = self.big.render("Quit",True,(127,0,255))
+			self.screen.blit(self.quit,(140,570))
+			pygame.draw.ellipse(self.screen,(96,96,96),(140,600,80,10))
+			if self.click[0] == 1:
+				pygame.display.quit()
+		else:
+			self.big = pygame.font.Font("PG_Roof Runners_active_bold-it.ttf",30)
+			self.quit = self.big.render("Quit",True,(0,102,204))
+			self.screen.blit(self.quit,(140,570))
+
+
+		if 540>self.mouse[0]>390 and 600>self.mouse[1]>560:
+			#pygame.draw.rect(self.screen,(153,153,255),(90,580,190,60))
+			self.big = pygame.font.Font("PG_Roof Runners_active_bold-it.ttf",40)
+			self.level = self.big.render("Choose Level",True,(127,0,255))
+			self.screen.blit(self.level,(360,570))
+			pygame.draw.ellipse(self.screen,(96,96,96),(360,600,250,10))
+			if self.click[0] == 1:
+				Level.Levels().run()
+		else:
+			self.big = pygame.font.Font("PG_Roof Runners_active_bold-it.ttf",30)
+			self.level = self.big.render("Choose Level",True,(0,102,204))
+			self.screen.blit(self.level,(390,570))
+
 		
+
+#Instructions().run()	
 
