@@ -10,6 +10,7 @@ import threading
 import sys
 from aubio import onset, source
 from numpy import hstack, zeros
+from tempo import *
 
 class ThreeDPiano(PygameGame):
 	#CITATION: following code from 112 website
@@ -40,7 +41,6 @@ class ThreeDPiano(PygameGame):
 		self.mixer.init()
 		self.playing = self.mixer.Sound(self.song)
 		self.channel = self.playing.play()
-		
 
 		self.points = []
 		self.getCoordinates()
@@ -55,28 +55,86 @@ class ThreeDPiano(PygameGame):
 
 		self.nerfLevel = 0
 		self.allNerfs = []
+		self.startNerf = False
+
+		self.buffLevel = 0
+		self.allBuffs = []
+		self.startBuff = False
+
+		self.mostFreqSec = int(findBeats(self.song)*1000)
+		print("target",self.mostFreqSec)
+
 
 	def getRandomCell(self):
 		if self.nerfLevel == 0:
 			randCol = random.randint(0,3)
-			self.allSelectBlock.append(randCol)
-			self.setBlocks.add(randCol)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				self.allSelectBlock.append(randCol)
 		elif self.nerfLevel == 1:
 			randCol = random.randint(4,7)
-			self.allSelectBlock.append(randCol)
-			self.setBlocks.add(randCol)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				self.allSelectBlock.append(randCol)
 		elif self.nerfLevel == 2:
 			randCol = random.randint(8,11)
-			self.allSelectBlock.append(randCol)
-			self.setBlocks.add(randCol)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				self.allSelectBlock.append(randCol)
 		else:
 			randCol = random.randint(12,15)
-			self.allSelectBlock.append(randCol)
-			self.setBlocks.add(randCol)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				self.allSelectBlock.append(randCol)
 
 	def getRandomNerf(self):
-		randCol = random.randint(0,3)
-		self.allNerfs.append(randCol)
+		if self.nerfLevel == 0:
+			randCol = random.randint(0,3)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				return randCol
+			else:
+				return -1
+		elif self.nerfLevel == 1:
+			randCol = random.randint(4,7)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				return randCol
+			else:
+				return -1
+		elif self.nerfLevel == 2:
+			randCol = random.randint(8,11)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				return randCol
+			else:
+				return -1
+		else:
+			randCol = random.randint(12,15)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				return randCol
+			else:
+				return -1
+
+	def getRandomBuff(self):
+		if self.nerfLevel == 0:
+			randCol = random.randint(0,3)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				return randCol
+			else:
+				return -1
+		elif self.nerfLevel == 1:
+			randCol = random.randint(4,7)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				return randCol
+			else:
+				return -1
+		elif self.nerfLevel == 2:
+			randCol = random.randint(8,11)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				return randCol
+			else:
+				return -1
+		else:
+			randCol = random.randint(12,15)
+			if randCol not in self.allSelectBlock and randCol not in self.allNerfs and randCol not in self.allBuffs:
+				return randCol
+			else:
+				return -1
+		 
 
 	def getCoordinates(self):
 		for row in range(self.rows+1):
@@ -127,10 +185,6 @@ class ThreeDPiano(PygameGame):
 		win_s = 512                 # fft size
 		hop_s = win_s // 2          # hop size
 
-		if len(self.song) < 2:
-			print("Usage: %s <filename> [samplerate]" % sys.argv[0])
-			sys.exit(1)
-
 		filename = self.song
 
 		samplerate = 0
@@ -158,23 +212,47 @@ class ThreeDPiano(PygameGame):
 				self.allOnsets.append(o.get_last_s())
 				onsets.append(o.get_last())
 			if read < hop_s: break
-		#self.allOnsets = list(set(self.allOnsets))
 		for i in range (len(self.allOnsets)):
 			self.allOnsets[i] = int(self.allOnsets[i]*1000)
 
-
-	def timerFired(self,dt):
+	def getBuffBenefit(self):
 		self.fallingTime = 1
 		if self.originalLife == 3:
-			self.fallingTime = 20
+			if self.buffLevel == 0:
+				return 20
+			elif self.buffLevel == 1:
+				return 22
+			elif self.buffLevel == 2:
+				return 24
+			else:
+				return 26
 		elif self.originalLife == 2:
-			self.fallingTime = 4
+			if self.buffLevel == 0:
+				return 4
+			elif self.buffLevel == 1:
+				return 6
+			elif self.buffLevel == 2:
+				return 8
+			else:
+				return 10
 		elif self.originalLife == 1:
-			self.fallingTime == 2
+			if self.buffLevel == 0:
+				return  2
+			elif self.buffLevel == 1:
+				return 4
+			elif self.buffLevel == 2:
+				return 6
+			else:
+				return 8
 
-		self.randomNerfTime = random.randint(10,60)
+	def timerFired(self,dt):
+		print(self.buffLevel)
+		self.randomNerfTime = random.randint(5,10)
+		self.randomBuffTime = random.randint(5,10)
 
 		self.timerCalls += 1
+		self.fallingTime = self.getBuffBenefit()
+
 		if self.life != 0 and self.channel.get_busy() == 1:
 			#loses a life when block is lower than end of screen
 			for item in (self.allSelectBlock):
@@ -186,22 +264,52 @@ class ThreeDPiano(PygameGame):
 			self.endTime =  pygame.time.get_ticks()
 			self.timeDiff = self.endTime-self.initialTime
 			for n in self.allOnsets:
-				if -50 <= self.timeDiff - n <= 50:
+				if -40 <= self.timeDiff - n <= 40:
 					self.getRandomCell()
 
-			#generate random nerfs
-			if self.timerCalls % self.randomNerfTime ==0:
-				self.getRandomNerf()
+			#put nerfs and buffs before most frequent notes
+			if -50 <= self.timeDiff - self.mostFreqSec <= 50:
+				#place nerfs and buffs
+				self.startNerf = True
+				self.startBuff = True
+			if self.timeDiff - self.mostFreqSec >= 20000:
+				self.startNerf = False
+				self.startBuff = False
 
+			#generate random nerfs
+			if self.startNerf == True:
+				if self.timerCalls % self.randomNerfTime ==0:
+					start = self.timerCalls
+					self.allNerfs.append([self.getRandomNerf(),start])
+			if self.startBuff == True:
+				if self.timerCalls % self.randomBuffTime ==0:
+					start = self.timerCalls
+					self.allBuffs.append([self.getRandomBuff(),start])
 			#move the blocks down
 			if self.timerCalls % self.fallingTime == 0:
 				for i in range(len(self.allSelectBlock)):
 					block = self.allSelectBlock[i]
 					self.allSelectBlock[i] = block+4
 				#move nerf dowm
-				for i in range (len(self.allNerfs)):
-					block = self.allNerfs[i]
-					self.allNerfs[i] = block+4
+				for nerf in self.allNerfs:
+					block = nerf[0]
+					if block == -1:
+						self.allNerfs.remove(nerf)
+					else:
+						nerf[0] = block+4
+				for buff in self.allBuffs:
+					block = buff[0]
+					if block == -1:
+						self.allBuffs.remove(buff)
+					else:
+						buff[0] = block+4
+			#remove nerf after some time
+			for nerf in self.allNerfs:
+				if (self.timerCalls - nerf[1]) == 50:
+					self.allNerfs.remove(nerf)
+			for buff in self.allBuffs:
+				if (self.timerCalls - buff[1]) == 50:
+					self.allBuffs.remove(buff)
 
 		#win
 		elif self.channel.get_busy() == 0 and self.life != 0:
@@ -235,123 +343,319 @@ class ThreeDPiano(PygameGame):
 			if keycode == pygame.K_a:
 				blockSubLst = []
 				contain = False
+				containNerf = False
+				isRemoved = False
+				firstBlock = 0
+				firstNerf = 0
+				firstBuff = 0
 				for block in self.allSelectBlock:
-					if block % 4 ==  0:
+					if block % 4 == 0:
+						if block > firstBlock:
+							firstBlock = block
+				for nerf in self.allNerfs:
+					if nerf[0] % 4 == 0:
+						if nerf[0] > firstNerf:
+							firstNerf = nerf[0]
+				for buff in self.allBuffs:
+					if buff[0] % 4 == 0:
+						if buff[0]>firstBuff:
+							firstBuff = buff[0]
+				for block in self.allSelectBlock:
+					if block % 4 == 0:
+						contain = True
+						break
+				for nerf in self.allNerfs:
+					if (nerf[0])%4 == 0:
+						contain = True
+						break
+				for buff in self.allBuffs:
+					if (buff[0])%4 == 0:
 						contain = True
 						break
 				if contain == False:
 					threading.Thread(target = self.playWrong,args=()).start()
 					self.life -= 1
-				for i in range (len(self.allSelectBlock)):
-					if self.allSelectBlock[i] % 4 == 0:
-						threading.Thread(target = self.playDing,args=()).start()
-						self.allSelectBlock.pop(i)
-						Struct.score += 1
-						break
-				for i in range (len(self.allSelectBlock)):
-					if self.allSelectBlock[i] % 4 == 0:
-						blockSubLst.append(self.allSelectBlock[i])
-				for i in range (len(self.allNerfs)):
-					if len(blockSubLst) == 0:
-						if len(self.allNerfs)>0:
-							self.allNerfs.pop(i)
-							threading.Thread(target = self.playWrong,args=()).start()
-							self.nerfLevel += 1
-					elif self.allNerfs[i] % 4 == 0 and blockSubLst[0]<self.allNerfs[i]:
-						self.allNerfs.pop(i)
-						threading.Thread(target = self.playWrong,args=()).start()
-						self.nerfLevel += 1
+				if firstBlock > firstNerf and firstBlock > firstBuff:
+					for blk in self.allSelectBlock:
+						if blk%4 == 0:
+							threading.Thread(target = self.playDing,args=()).start()
+							self.allSelectBlock.remove(blk)
+							Struct.score += 1
+							isRemoved = True
+							break
+				elif firstNerf > firstBlock and firstNerf > firstBuff:
+					if isRemoved == False:
+						for i in range (len(self.allSelectBlock)):
+							if self.allSelectBlock[i] % 4 == 0:
+								blockSubLst.append(self.allSelectBlock[i])
+						for nerf in self.allNerfs:
+							if len(blockSubLst) == 0:
+								self.allNerfs.remove(nerf)
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.nerfLevel += 1
+							elif nerf[0] % 4 == 0 and blockSubLst[0]<nerf[0]:
+								self.allNerfs.remove(nerf)
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.nerfLevel += 1
+				elif firstBuff > firstBlock and firstBuff > firstNerf:
+					if isRemoved == False:
+						for i in range (len(self.allSelectBlock)):
+							if self.allSelectBlock[i] % 4 == 0:
+								blockSubLst.append(self.allSelectBlock[i])
+						for buff in self.allBuffs:
+							if len(blockSubLst) == 0:
+								self.allBuffs.remove(buff)
+								print("removed")
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.buffLevel += 1
+							# elif buff[0] % 4 == 0 and blockSubLst[0]<buff[0]:
+							else:
+								self.allBuffs.remove(buff)
+								print("removed")
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.buffLevel += 1
 
 
 			if keycode == pygame.K_s:
 				blockSubLst = []
 				contain = False
+				isRemoved = False
+				firstBlock = 0
+				firstNerf = 0
+				firstBuff = 0
+				for block in self.allSelectBlock:
+					if (block-1) % 4 == 0:
+						if block > firstBlock:
+							firstBlock = block
+				for nerf in self.allNerfs:
+					if (nerf[0]-1) % 4 == 0:
+						if nerf[0] > firstNerf:
+							firstNerf = nerf[0]
+				for buff in self.allBuffs:
+					if (buff[0]-1) % 4 == 0:
+						if buff[0] > firstBuff:
+							firstBuff = buff[0]
 				for block in self.allSelectBlock:
 					if (block-1) % 4 ==  0:
 						contain = True
 						break
+				for nerf in self.allNerfs:
+					if (nerf[0]-1)%4 == 0:
+						contain = True
+						break
+				for buff in self.allBuffs:
+					if (buff[0]-1)%4 == 0:
+						contain = True
+						break
 				if contain == False:
 					threading.Thread(target = self.playWrong,args=()).start()
 					self.life -= 1
-				for i in range (len(self.allSelectBlock)):
-					if (self.allSelectBlock[i]-1) % 4 == 0:
-						threading.Thread(target = self.playDing,args=()).start()
-						self.allSelectBlock.pop(i)
-						Struct.score += 1
-						break
-				for i in range (len(self.allSelectBlock)):
-					if (self.allSelectBlock[i]-1) % 4 == 0:
-						blockSubLst.append(self.allSelectBlock[i])
-				for i in range (len(self.allNerfs)):
-					if len(blockSubLst) == 0:
-						if len(self.allNerfs)>0:
-							self.allNerfs.pop(i)
-							threading.Thread(target = self.playWrong,args=()).start()
-							self.nerfLevel += 1
-					elif (self.allNerfs[i]-1) % 4 == 0 and blockSubLst[0]<self.allNerfs[i]:
-						self.allNerfs.pop(i)
-						threading.Thread(target = self.playWrong,args=()).start()
-						self.nerfLevel += 1
+
+				if firstBlock>firstNerf and firstBlock > firstBuff:
+					for blk in self.allSelectBlock:
+						if (blk-1)%4 == 0:
+							threading.Thread(target = self.playDing,args=()).start()
+							self.allSelectBlock.remove(blk)
+							Struct.score += 1
+							isRemoved = True
+							break
+				elif firstNerf>firstBlock and firstNerf > firstBuff:
+					if isRemoved == False:
+						for i in range (len(self.allSelectBlock)):
+							if (self.allSelectBlock[i]-1) % 4 == 0:
+								blockSubLst.append(self.allSelectBlock[i])
+						for nerf in self.allNerfs:
+							if len(blockSubLst) == 0:
+								self.allNerfs.remove(nerf)
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.nerfLevel += 1
+							elif (nerf[0]-1) % 4 == 0 and blockSubLst[0]<(nerf[0]):
+								self.allNerfs.remove(nerf)
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.nerfLevel += 1
+				elif firstBuff>firstBlock and firstBuff > firstNerf:
+					if isRemoved == False:
+						for i in range (len(self.allSelectBlock)):
+							if (self.allSelectBlock[i]-1) % 4 == 0:
+								blockSubLst.append(self.allSelectBlock[i])
+						for buff in self.allBuffs:
+							if len(blockSubLst) == 0:
+								self.allBuffs.remove(buff)
+								isRemoved = True
+								print("removed")
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.buffLevel += 1
+							elif (buff[0]-1) % 4 == 0 and blockSubLst[0]<(buff[0]):
+								self.allBuffs.remove(buff)
+								isRemoved = True
+								print("removed")
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.buffLevel += 1
 				
 			if keycode == pygame.K_d:
 				blockSubLst = []
 				contain = False
+				isRemoved = False
+				firstBlock = 0
+				firstNerf = 0
+				firstBuff = 0
+				for block in self.allSelectBlock:
+					if (block-2) % 4 == 0:
+						if block > firstBlock:
+							firstBlock = block
+				for nerf in self.allNerfs:
+					if (nerf[0]-2) % 4 == 0:
+						if nerf[0] > firstNerf:
+							firstNerf = nerf[0]
+				for buff in self.allBuffs:
+					if (buff[0]-2) % 4 == 0:
+						if buff[0] > firstBuff:
+							firstBuff = buff[0]
 				for block in self.allSelectBlock:
 					if (block-2) % 4 ==  0:
 						contain = True
 						break
+				for nerf in self.allNerfs:
+					if (nerf[0]-2)%4 == 0:
+						contain = True
+						break
+				for buff in self.allBuffs:
+					if (buff[0]-2)%4 == 0:
+						contain = True
+						break
 				if contain == False:
+					isRemoved = True
 					threading.Thread(target = self.playWrong,args=()).start()
 					self.life -= 1
-				for i in range (len(self.allSelectBlock)):
-					if (self.allSelectBlock[i]-2) % 4 == 0:
-						threading.Thread(target = self.playDing,args=()).start()
-						self.allSelectBlock.pop(i)
-						Struct.score += 1
-						break
-				for i in range (len(self.allSelectBlock)):
-					if (self.allSelectBlock[i]-2) % 4 == 0:
-						blockSubLst.append(self.allSelectBlock[i])
-				for i in range (len(self.allNerfs)):
-					if len(blockSubLst) == 0:
-						if len(self.allNerfs)>0:
-							self.allNerfs.pop(i)
-							threading.Thread(target = self.playWrong,args=()).start()
-							self.nerfLevel += 1
-					elif (self.allNerfs[i]-2) % 4 == 0 and blockSubLst[0]<self.allNerfs[i]:
-						self.allNerfs.pop(i)
-						threading.Thread(target = self.playWrong,args=()).start()
-						self.nerfLevel += 1
+
+				if firstBlock > firstNerf and firstBlock > firstBuff:
+					for blk in self.allSelectBlock:
+						if (blk-2)%4 == 0:
+							threading.Thread(target = self.playDing,args=()).start()
+							self.allSelectBlock.remove(blk)
+							Struct.score += 1
+							isRemoved = True
+							break
+				elif firstNerf > firstBlock and firstNerf > firstBuff:
+					if isRemoved == False:
+						for i in range (len(self.allSelectBlock)):
+							if (self.allSelectBlock[i]-2) % 4 == 0:
+								blockSubLst.append(self.allSelectBlock[i])
+						for nerf in self.allNerfs:
+							if len(blockSubLst) == 0:
+								self.allNerfs.remove(nerf)
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.nerfLevel += 1
+							elif (nerf[0]-2) % 4 == 0 and blockSubLst[0]<(nerf[0]):
+								self.allNerfs.remove(nerf)
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.nerfLevel += 1
+				elif firstBuff > firstBlock and firstBuff > firstNerf:
+					if isRemoved == False:
+						for i in range (len(self.allSelectBlock)):
+							if (self.allSelectBlock[i]-2) % 4 == 0:
+								blockSubLst.append(self.allSelectBlock[i])
+						for buff in self.allBuffs:
+							if len(blockSubLst) == 0:
+								self.allBuffs.remove(buff)
+								print("removed")
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.buffLevel += 1
+							elif (buff[0]-2) % 4 == 0 and blockSubLst[0]<(buff[0]):
+								self.allBuffs.remove(buff)
+								print("removed")
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.buffLevel += 1
 
 			if keycode == pygame.K_f:
 				blockSubLst = []
 				contain = False
+				isRemoved = False
+				firstBlock = 0
+				firstNerf = 0
+				firstBuff = 0
+				for block in self.allSelectBlock:
+					if (block-3) % 4 == 0:
+						if block > firstBlock:
+							firstBlock = block
+				for nerf in self.allNerfs:
+					if (nerf[0]-3) % 4 == 0:
+						if nerf[0] > firstNerf:
+							firstNerf = nerf[0]
+				for buff in self.allBuffs:
+					if (buff[0]-3) % 4 == 0:
+						if buff[0] > firstBuff:
+							firstBuff = buff[0]
 				for block in self.allSelectBlock:
 					if (block-3) % 4 ==  0:
 						contain = True
 						break
+				for nerf in self.allNerfs:
+					if (nerf[0]-3)%4 == 0:
+						contain = True
+						break
+				for buff in self.allBuffs:
+					if (buff[0]-3)%4 == 0:
+						contain = True
+						break
 				if contain == False:
 					threading.Thread(target = self.playWrong,args=()).start()
+					isRemoved = True
 					self.life -= 1
-				for i in range (len(self.allSelectBlock)):
-					if (self.allSelectBlock[i]-3) % 4 == 0:
-						threading.Thread(target = self.playDing,args=()).start()
-						self.allSelectBlock.pop(i)
-						Struct.score += 1
-						break
-				for i in range (len(self.allSelectBlock)):
-					if (self.allSelectBlock[i]-3) % 4 == 0:
-						blockSubLst.append(self.allSelectBlock[i])
-				for i in range (len(self.allNerfs)):
-					if len(blockSubLst) == 0:
-						if len(self.allNerfs)>0:
-							self.allNerfs.pop(i)
-							threading.Thread(target = self.playWrong,args=()).start()
-							self.nerfLevel += 1
-					elif (self.allNerfs[i]-3) % 4 == 0 and blockSubLst[0]<self.allNerfs[i]:
-						self.allNerfs.pop(i)
-						threading.Thread(target = self.playWrong,args=()).start()
-						self.nerfLevel += 1
+
+				if firstBlock>firstNerf and firstBlock > firstBuff:
+					for blk in self.allSelectBlock:
+						if (blk-3)%4 == 0:
+							threading.Thread(target = self.playDing,args=()).start()
+							self.allSelectBlock.remove(blk)
+							isRemoved = True
+							Struct.score += 1
+							break
+				elif firstNerf>firstBlock and firstNerf > firstBuff:
+					if isRemoved == False:
+						for i in range (len(self.allSelectBlock)):
+							if (self.allSelectBlock[i]-3) % 4 == 0:
+								blockSubLst.append(self.allSelectBlock[i])
+						for nerf in self.allNerfs:
+							if len(blockSubLst) == 0:
+								self.allNerfs.remove(nerf)
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.nerfLevel += 1
+							elif (nerf[0]-3) % 4 == 0 and blockSubLst[0]<(nerf[0]):
+								self.allNerfs.remove(nerf)
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.nerfLevel += 1
+
+				elif firstBuff>firstBlock and firstBuff > firstNerf:
+					if isRemoved == False:
+						for i in range (len(self.allSelectBlock)):
+							if (self.allSelectBlock[i]-3) % 4 == 0:
+								blockSubLst.append(self.allSelectBlock[i])
+						for buff in self.allBuffs:
+							if len(blockSubLst) == 0:
+								self.allBuffs.remove(buff)
+								print("removed")
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.buffLevel += 1
+							elif (buff[0]-3) % 4 == 0 and blockSubLst[0]<(buff[0]):
+								self.allBuffs.remove(buff)
+								print("removed")
+								isRemoved = True
+								threading.Thread(target = self.playWrong,args=()).start()
+								self.buffLevel += 1
 
 		elif self.life <= 0 or self.channel.get_busy() == 0:
 			Lost().run()
@@ -396,12 +700,20 @@ class ThreeDPiano(PygameGame):
 					upperShape = [(c2[0]+15,c2[1]),c1,c3,c4]
 					pygame.draw.polygon(self.screen,(87,85,85),upperShape)
 			for nerf in self.allNerfs:
-				if nerf == i:
+				if nerf[0] == i:
 					[pt2,pt1,pt3,pt4] = self.twoDPoints[i]
 					pygame.draw.polygon(self.screen,(232,229,229),[pt1,pt2,pt3,pt4])
 					(c2,c1,c3,c4) = (pt2,pt1,pt3,pt4)
 					upperShape = [(c2[0]+15,c2[1]),c1,c3,c4]
 					pygame.draw.polygon(self.screen,(255,0,0),upperShape)
+			for buff in self.allBuffs:
+				if buff[0] == i:
+					[pt2,pt1,pt3,pt4] = self.twoDPoints[i]
+					pygame.draw.polygon(self.screen,(232,229,229),[pt1,pt2,pt3,pt4])
+					(c2,c1,c3,c4) = (pt2,pt1,pt3,pt4)
+					upperShape = [(c2[0]+15,c2[1]),c1,c3,c4]
+					pygame.draw.polygon(self.screen,(0,255,0),upperShape)
+
 
 
 		self.scoreText = self.buttonFont.render("Score:",True,(255,255,255))
